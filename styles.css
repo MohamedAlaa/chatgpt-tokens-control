@@ -1,0 +1,199 @@
+/* Tokens Control — warning modal */
+#tc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  animation: tc-fade 0.12s ease-out;
+}
+
+#tc-modal {
+  width: min(440px, 92vw);
+  background: #1e1e22;
+  color: #f4f4f5;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 28px 26px 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  text-align: center;
+  animation: tc-pop 0.14s cubic-bezier(0.2, 0.8, 0.3, 1.2);
+}
+
+#tc-modal-emoji {
+  font-size: 34px;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+#tc-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0 0 10px;
+}
+
+#tc-modal-sub {
+  font-size: 14px;
+  color: #b9b9c0;
+  margin: 0 0 22px;
+  line-height: 1.45;
+}
+
+#tc-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.tc-btn {
+  flex: 1;
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.06s ease, background 0.12s ease, opacity 0.12s ease;
+}
+.tc-btn:active {
+  transform: scale(0.97);
+}
+
+.tc-btn-primary {
+  background: #10a37f;
+  color: #fff;
+}
+.tc-btn-primary:hover {
+  background: #0e8e6f;
+}
+
+.tc-btn-ghost {
+  background: transparent;
+  color: #b9b9c0;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.tc-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f4f4f5;
+}
+
+/* ---- Severity tiers ---- */
+#tc-modal {
+  border-top: 4px solid #10a37f; /* mild default */
+}
+#tc-modal.tc-tier-heavy {
+  border-top-color: #e0a106;
+}
+#tc-modal.tc-tier-extreme {
+  border-top-color: #e5484d;
+}
+#tc-modal.tc-tier-heavy #tc-modal-title {
+  color: #ffd27a;
+}
+#tc-modal.tc-tier-extreme #tc-modal-title {
+  color: #ff7a7d;
+}
+#tc-modal.tc-tier-extreme .tc-btn-ghost {
+  border-color: rgba(229, 72, 77, 0.55);
+  color: #ff9b9d;
+}
+#tc-modal.tc-tier-extreme .tc-btn-ghost:hover {
+  background: rgba(229, 72, 77, 0.12);
+  color: #ffb3b5;
+}
+
+/* Token-cost badge (extreme tier) */
+#tc-modal-badge {
+  display: inline-block;
+  margin: -6px auto 20px;
+  padding: 6px 13px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  border-radius: 999px;
+  background: rgba(229, 72, 77, 0.16);
+  color: #ff8a8d;
+  border: 1px solid rgba(229, 72, 77, 0.35);
+}
+
+@keyframes tc-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes tc-pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- Blocking gate (locks the page until GPT-5.3 Instant is confirmed) ---- */
+#tc-gate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  animation: tc-fade 0.15s ease-out;
+}
+
+#tc-gate {
+  width: min(420px, 92vw);
+  background: #ffffff;
+  color: #1e1e22;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 18px;
+  padding: 32px 28px 26px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.18);
+  text-align: center;
+}
+
+#tc-gate-spinner {
+  width: 38px;
+  height: 38px;
+  margin: 0 auto 18px;
+  border: 3px solid rgba(16, 163, 127, 0.18);
+  border-top-color: #10a37f;
+  border-radius: 50%;
+  animation: tc-spin 0.7s linear infinite;
+}
+
+#tc-gate-check {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 16px;
+  display: none;
+  color: #10a37f;
+}
+
+#tc-gate-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+#tc-gate-sub {
+  font-size: 14px;
+  color: #6b6b73;
+  margin: 0;
+  line-height: 1.45;
+}
+
+#tc-gate-actions {
+  display: none;
+  gap: 10px;
+  margin-top: 22px;
+}
+#tc-gate-actions .tc-btn { flex: 1; }
+
+@keyframes tc-spin {
+  to { transform: rotate(360deg); }
+}
