@@ -175,16 +175,35 @@
     T = I18N[LANG];
   }
 
-  // Load the user's choice from the popup, and react to live changes.
+  // Resolves once the stored language preference has been applied (or right
+  // away if storage is unavailable). The gate awaits this so it never paints
+  // the wrong language on first load — chrome.storage reads are async, and the
+  // gate fires the instant the page loads.
+  let langReady = Promise.resolve();
   try {
-    chrome.storage?.sync?.get(["tcLang"], (res) => {
-      applyLangPref(res && res.tcLang);
-    });
-    chrome.storage?.onChanged?.addListener((changes, area) => {
-      if ((area === "sync" || area === "local") && changes.tcLang) {
-        applyLangPref(changes.tcLang.newValue);
-      }
-    });
+    if (chrome && chrome.storage && chrome.storage.sync) {
+      langReady = new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+          if (!done) {
+            done = true;
+            resolve();
+          }
+        };
+        chrome.storage.sync.get(["tcLang"], (res) => {
+          applyLangPref(res && res.tcLang);
+          finish();
+        });
+        // Safety: never block the gate for more than a moment.
+        setTimeout(finish, 1000);
+      });
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if ((area === "sync" || area === "local") && changes.tcLang) {
+          applyLangPref(changes.tcLang.newValue);
+          refreshGateText(); // update the gate live if it's on screen
+        }
+      });
+    }
   } catch (e) {
     /* storage unavailable — fall back to auto-detected language */
   }
@@ -385,6 +404,18 @@
 
   function removeGate() {
     document.getElementById("tc-gate-overlay")?.remove();
+  }
+
+  // Re-apply gate text in the current language (used when the language changes
+  // while the gate is on screen). Only touches the "locking" spinner state.
+  function refreshGateText() {
+    const overlay = document.getElementById("tc-gate-overlay");
+    if (!overlay) return;
+    const spinner = overlay.querySelector("#tc-gate-spinner");
+    if (spinner && spinner.style.display !== "none") {
+      overlay.querySelector("#tc-gate-title").textContent = T.gate.locking;
+      overlay.querySelector("#tc-gate-sub").textContent = T.gate.lockingSub;
+    }
   }
 
   /* ---------------------------------------------------------------------- */
@@ -710,6 +741,9 @@
     const failsafe = setTimeout(removeGate, 9000);
 
     try {
+      // Make sure the stored language is applied before the gate paints.
+      await langReady;
+
       // Lock the page while we validate.
       showGate();
 
