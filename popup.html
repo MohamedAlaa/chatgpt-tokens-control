@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tokens Control</title>
+    <style>
+      :root {
+        --teal: #10a37f;
+        --bg: #1e1e22;
+        --card: #26262b;
+        --text: #f4f4f5;
+        --muted: #9a9aa2;
+        --border: rgba(255, 255, 255, 0.1);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        width: 280px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: 16px;
+      }
+      .head {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 4px;
+      }
+      .head .emoji { font-size: 20px; }
+      .head h1 { font-size: 15px; font-weight: 700; margin: 0; }
+      .sub { font-size: 12px; color: var(--muted); margin: 0 0 16px; line-height: 1.4; }
+      .label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--muted);
+        margin: 0 0 8px;
+      }
+      .opts { display: flex; flex-direction: column; gap: 8px; }
+      .opt {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 12px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: border-color 0.12s, background 0.12s;
+      }
+      .opt:hover { border-color: rgba(255, 255, 255, 0.22); }
+      .opt.active { border-color: var(--teal); background: rgba(16, 163, 127, 0.12); }
+      .opt .flag { font-size: 17px; width: 20px; text-align: center; }
+      .opt .name { font-size: 13.5px; font-weight: 600; flex: 1; }
+      .opt .note { font-size: 11px; color: var(--muted); }
+      .opt .check { color: var(--teal); opacity: 0; font-weight: 700; }
+      .opt.active .check { opacity: 1; }
+      .saved {
+        margin-top: 14px;
+        font-size: 12px;
+        color: var(--teal);
+        text-align: center;
+        opacity: 0;
+        transition: opacity 0.18s;
+      }
+      .saved.show { opacity: 1; }
+    </style>
+  </head>
+  <body>
+    <div class="head">
+      <span class="emoji">⚡</span>
+      <h1>Tokens Control</h1>
+    </div>
+    <p class="sub">Choose the language for the warning and setup messages.</p>
+
+    <p class="label">Language</p>
+    <div class="opts" id="opts">
+      <div class="opt" data-lang="auto">
+        <span class="flag">🌐</span>
+        <span class="name">Auto<span class="note" id="auto-note"></span></span>
+        <span class="check">✓</span>
+      </div>
+      <div class="opt" data-lang="en">
+        <span class="flag">🇬🇧</span>
+        <span class="name">English</span>
+        <span class="check">✓</span>
+      </div>
+      <div class="opt" data-lang="es">
+        <span class="flag">🇪🇸</span>
+        <span class="name">Español</span>
+        <span class="check">✓</span>
+      </div>
+    </div>
+
+    <div class="saved" id="saved">Saved ✓</div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -33,14 +33,18 @@
   /* Localization — English / Spanish (anything else falls back to English)  */
   /* ---------------------------------------------------------------------- */
 
-  const LANG = (() => {
+  // Auto-detect from the browser (used when the user picks "Auto").
+  function detectAutoLang() {
     const l = (
       navigator.language ||
       navigator.userLanguage ||
       "en"
     ).toLowerCase();
     return l.startsWith("es") ? "es" : "en";
-  })();
+  }
+
+  // Current language — may be overridden by the user via the toolbar popup.
+  let LANG = detectAutoLang();
 
   // Visual severity per heavy option (locale-independent).
   //   "mild"    → subtle teal nudge
@@ -161,7 +165,29 @@
     },
   };
 
-  const T = I18N[LANG];
+  // Active translation table. Reassigned when the stored preference loads or
+  // changes (functions read `T` at call time, so this updates everything).
+  let T = I18N[LANG];
+
+  // Apply a stored preference ("auto" | "en" | "es").
+  function applyLangPref(pref) {
+    LANG = pref === "en" || pref === "es" ? pref : detectAutoLang();
+    T = I18N[LANG];
+  }
+
+  // Load the user's choice from the popup, and react to live changes.
+  try {
+    chrome.storage?.sync?.get(["tcLang"], (res) => {
+      applyLangPref(res && res.tcLang);
+    });
+    chrome.storage?.onChanged?.addListener((changes, area) => {
+      if ((area === "sync" || area === "local") && changes.tcLang) {
+        applyLangPref(changes.tcLang.newValue);
+      }
+    });
+  } catch (e) {
+    /* storage unavailable — fall back to auto-detected language */
+  }
 
   const log = (...a) => CONFIG.DEBUG && console.log("[TokensControl]", ...a);
 
