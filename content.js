@@ -759,6 +759,9 @@
       // Make sure the stored language is applied before the gate paints.
       await langReady;
 
+      // Lock the page while we validate.
+      showGate();
+
       // Wait for the switcher, then let it settle to THIS chat's model — right
       // after a sidebar navigation the button can briefly still show the
       // previous chat's model, which would otherwise fool the check below.
