@@ -34,12 +34,19 @@
     location.pathname.startsWith("/g/") &&
     !location.pathname.startsWith("/g/g-p");
 
+  // True while the gate is opening menus to select GPT-5.3. Declared up here so
+  // pruneBlocked() (called immediately below) can read it without a TDZ error.
+  let gating = false;
+
   /* ---------------------------------------------------------------------- */
   /* Remove the blocked model versions from the menu                         */
   /* ---------------------------------------------------------------------- */
 
   function pruneBlocked() {
     if (isGptPage()) return 0; // never alter a custom GPT's menu
+    // Don't disturb the menu while our own enforcement is navigating it —
+    // removing nodes from the open Radix menu mid-selection can break it.
+    if (gating) return 0;
     let removed = 0;
     document
       .querySelectorAll('[role="menuitemradio"]')
@@ -328,14 +335,18 @@
     document.getElementById("tc-gate-overlay")?.remove();
   }
 
-  let gating = false;
+  // (gating is declared near the top so pruneBlocked can read it.)
   let lastGateRun = 0;
   async function runGate() {
     if (gating) return;
     if (Date.now() - lastGateRun < 600) return;
     lastGateRun = Date.now();
     gating = true;
-    const failsafe = setTimeout(removeGate, 9000);
+    // Failsafe: never leave the gate up — and never leave pruning paused.
+    const failsafe = setTimeout(() => {
+      removeGate();
+      gating = false;
+    }, 9000);
     try {
       // Wait for the switcher, then let it settle to THIS chat's model (after a
       // sidebar navigation it can briefly show the previous chat's model).
