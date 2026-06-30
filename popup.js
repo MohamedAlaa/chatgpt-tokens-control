@@ -13,7 +13,8 @@
   document.getElementById("auto-note").textContent = ` · ${autoLang}`;
 
   function paint(pref) {
-    const value = pref || "auto";
+    // Spanish is the default when no preference has been saved yet.
+    const value = pref || "es";
     opts.forEach((o) => o.classList.toggle("active", o.dataset.lang === value));
   }
 

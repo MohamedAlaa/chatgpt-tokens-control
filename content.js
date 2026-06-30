@@ -43,8 +43,9 @@
     return l.startsWith("es") ? "es" : "en";
   }
 
-  // Current language — may be overridden by the user via the toolbar popup.
-  let LANG = detectAutoLang();
+  // Current language — Spanish by default; overridable via the toolbar popup
+  // ("Auto" follows the browser, or pick English / Español explicitly).
+  let LANG = "es";
 
   // Visual severity per heavy option (locale-independent).
   //   "mild"    → subtle teal nudge
@@ -169,9 +170,12 @@
   // changes (functions read `T` at call time, so this updates everything).
   let T = I18N[LANG];
 
-  // Apply a stored preference ("auto" | "en" | "es").
+  // Apply a stored preference ("auto" | "en" | "es"). When nothing is saved
+  // yet, default to Spanish; "auto" follows the browser language.
   function applyLangPref(pref) {
-    LANG = pref === "en" || pref === "es" ? pref : detectAutoLang();
+    if (pref === "en" || pref === "es") LANG = pref;
+    else if (pref === "auto") LANG = detectAutoLang();
+    else LANG = "es";
     T = I18N[LANG];
   }
 
@@ -432,6 +436,9 @@
   let dialogOpen = false;
 
   async function handleInterception(e) {
+    // Leave custom GPT pages alone entirely.
+    if (isGptPage()) return;
+
     const item = closestMenuItem(e.target);
     if (!item) return;
 
@@ -705,12 +712,20 @@
     }
   }
 
-  // Detect "new chat" by URL changes and initial load.
   let lastPath = location.pathname;
-  function isNewChat() {
+
+  // Pages where we enforce GPT-5.3 Instant: a brand-new chat OR an existing
+  // conversation (/c/...). Other pages (settings, the GPT store, etc.) are
+  // left alone.
+  function isChatPage() {
     const p = location.pathname;
-    // ChatGPT uses "/" or "/?..." for a brand-new chat.
-    return p === "/" || p === "" || p.startsWith("/g/") || p === "/new";
+    return p === "/" || p === "" || p === "/new" || p.startsWith("/c/");
+  }
+
+  // Custom GPTs live under /g/g-... — the extension stays completely out of
+  // their way (they're configured separately).
+  function isGptPage() {
+    return location.pathname.startsWith("/g/");
   }
 
   // Wait until a predicate is true (or timeout). Returns true if satisfied.
@@ -732,8 +747,8 @@
   async function runGate() {
     if (gating) return;
     if (userOverride) return; // user chose a heavy model on purpose
-    // Debounce: ignore re-triggers within 3s (in-page nav churn).
-    if (Date.now() - lastGateRun < 3000) return;
+    // Coalesce duplicate fires for the same navigation (pushState + poll).
+    if (Date.now() - lastGateRun < 600) return;
     lastGateRun = Date.now();
     gating = true;
 
@@ -747,15 +762,17 @@
       // Lock the page while we validate.
       showGate();
 
-      // Wait for the model switcher to mount.
+      // Wait for the switcher, then let it settle to THIS chat's model — right
+      // after a sidebar navigation the button can briefly still show the
+      // previous chat's model, which would otherwise fool the check below.
       await waitUntil(() => currentModelText(), 6000);
+      await sleep(450);
 
-      if (isAtDefault()) {
-        gateSuccess();
-        return;
-      }
+      // Already on GPT-5.3 Instant? Nothing to do — no gate, no flash.
+      if (isAtDefault()) return;
 
-      // Try to enforce, re-checking after each attempt.
+      // Needs switching — lock the page and enforce.
+      showGate();
       for (let attempt = 0; attempt < 3; attempt++) {
         await enforceDefaultModel();
         if (await waitUntil(isAtDefault, 1200, 200)) {
@@ -774,10 +791,16 @@
   }
 
   function maybeEnforce() {
-    if (isNewChat()) {
+    // Never touch custom GPT pages.
+    if (isGptPage()) {
+      removeGate();
+      return;
+    }
+    // New chat or existing conversation → enforce GPT-5.3 Instant.
+    if (isChatPage()) {
       runGate();
     } else {
-      // Left the new-chat screen — make sure no stale gate remains.
+      // Some other page (settings, GPT store…) — clear any stale gate.
       removeGate();
     }
   }
@@ -802,6 +825,11 @@
       maybeEnforce();
     }
   }
+
+  // Belt-and-suspenders: ChatGPT's router may have captured the native
+  // history.pushState before our wrappers were installed, so sidebar clicks
+  // can slip past them. Poll the URL so every navigation is detected.
+  setInterval(onNav, 400);
 
   // Initial run once the DOM settles.
   maybeEnforce();

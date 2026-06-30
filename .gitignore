@@ -44,3 +44,9 @@ yarn-error.log*
 dist/
 build/
 *.zip
+
+# Extension packaging — NEVER commit signing keys or packed builds
+*.pem
+*.crx
+key.pem
+strict.pem

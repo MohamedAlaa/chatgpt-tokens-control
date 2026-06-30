@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Tokens Control — Strict (GPT-5.3 only)",
+  "version": "1.0.0",
+  "description": "Hard-removes GPT-5.4 and GPT-5.5 from ChatGPT's model menu and locks every new chat to GPT-5.3 Instant. No heavyweight models, no choice.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
