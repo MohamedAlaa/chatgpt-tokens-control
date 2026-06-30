@@ -27,9 +27,12 @@
   const norm = (s) => (s || "").replace(/\s+/g, " ").trim();
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // Custom GPTs live under /g/g-... — leave them completely alone (no prune,
-  // no gate, no auto-select).
-  const isGptPage = () => location.pathname.startsWith("/g/");
+  // Custom GPTs live under /g/g-<hash>... — leave them completely alone (no
+  // prune, no gate, no auto-select). Projects use the /g/g-p- prefix and are
+  // NOT GPTs, so they're handled like normal chats.
+  const isGptPage = () =>
+    location.pathname.startsWith("/g/") &&
+    !location.pathname.startsWith("/g/g-p");
 
   /* ---------------------------------------------------------------------- */
   /* Remove the blocked model versions from the menu                         */
@@ -362,10 +365,17 @@
   /* ---------------------------------------------------------------------- */
 
   let lastPath = location.pathname;
-  // New chat OR existing conversation (/c/...) — but never the GPT store etc.
+  // New chat, existing conversation (/c/...), or anything inside a Project
+  // (/g/g-p-...) — but never the GPT store, settings, etc.
   const isChatPage = () => {
     const p = location.pathname;
-    return p === "/" || p === "" || p === "/new" || p.startsWith("/c/");
+    return (
+      p === "/" ||
+      p === "" ||
+      p === "/new" ||
+      p.startsWith("/c/") ||
+      p.startsWith("/g/g-p")
+    );
   };
 
   function maybeEnforce() {

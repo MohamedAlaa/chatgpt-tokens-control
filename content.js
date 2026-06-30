@@ -714,18 +714,26 @@
 
   let lastPath = location.pathname;
 
-  // Pages where we enforce GPT-5.3 Instant: a brand-new chat OR an existing
-  // conversation (/c/...). Other pages (settings, the GPT store, etc.) are
-  // left alone.
+  // Pages where we enforce GPT-5.3 Instant: a brand-new chat, an existing
+  // conversation (/c/...), or anything inside a Project (/g/g-p-...), including
+  // its chats. Other pages (settings, the GPT store, etc.) are left alone.
   function isChatPage() {
     const p = location.pathname;
-    return p === "/" || p === "" || p === "/new" || p.startsWith("/c/");
+    return (
+      p === "/" ||
+      p === "" ||
+      p === "/new" ||
+      p.startsWith("/c/") ||
+      p.startsWith("/g/g-p")
+    );
   }
 
-  // Custom GPTs live under /g/g-... — the extension stays completely out of
-  // their way (they're configured separately).
+  // Custom GPTs live under /g/g-<hash>... and are left alone (they're
+  // configured separately). Projects also live under /g/ but use the g-p-
+  // prefix — those are NOT GPTs, so they don't count here.
   function isGptPage() {
-    return location.pathname.startsWith("/g/");
+    const p = location.pathname;
+    return p.startsWith("/g/") && !p.startsWith("/g/g-p");
   }
 
   // Wait until a predicate is true (or timeout). Returns true if satisfied.
