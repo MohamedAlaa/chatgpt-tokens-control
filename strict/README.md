@@ -4,10 +4,10 @@ A no-compromises edition of [Tokens Control](../README.md). Instead of *warning*
 
 ## What it does
 
-1. **Deletes `GPT-5.4` and `GPT-5.5` from ChatGPT's model menu.** A `MutationObserver` strips those options out every time the menu renders, so they can never be selected.
+1. **Keeps only `GPT-5.3` in ChatGPT's model menu (whitelist).** A `MutationObserver` strips out every other model version — GPT-5.4, GPT-5.5, o3, and anything OpenAI adds later — each time the menu renders, so they can never be selected.
 2. **Locks every new chat to `GPT-5.3 Instant`.**
 
-The trick: ChatGPT only exposes the heavy intelligence levels (`Medium`, `High`, `Extra High`, `Pro`) *under* GPT-5.5/5.4. Remove those two model versions and the heavy options vanish with them — leaving GPT-5.3 Instant as the only practical choice. No nudge, no override.
+The trick: ChatGPT only exposes the heavy intelligence levels (`Medium`, `High`, `Extra High`, `Pro`) *under* the flagship models. Whitelisting only GPT-5.3 removes every heavier version, and the heavy levels vanish with them — leaving GPT-5.3 Instant as the only path. No nudge, no override. Because it's a whitelist, any new model OpenAI ships is blocked automatically.
 
 ## When to use this instead of the standard edition
 
@@ -29,11 +29,11 @@ Use Strict for operational departments where the heavyweight models should never
 
 At the top of `content.js`:
 
-- `BLOCKED_VERSIONS` — model versions to delete (default `["GPT-5.5", "GPT-5.4"]`)
+- `ALLOWED_VERSIONS` — the only model version(s) allowed to stay (default `["GPT-5.3"]`); everything else is removed
 - `DEFAULT_INTELLIGENCE` / `DEFAULT_MODEL_VERSION` — what new chats lock to
 - `DEBUG` — set `true` to log activity to the console
 
-Model names are matched by visible text, so if a workspace renames a model, just update `BLOCKED_VERSIONS`.
+Model names are matched by visible text, so if a workspace renames a model, just update `ALLOWED_VERSIONS`.
 
 ## License
 

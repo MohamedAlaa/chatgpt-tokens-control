@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Tokens Control — Instant by Default",
   "version": "1.0.0",
-  "description": "Defaults every new ChatGPT chat to GPT-5.3 Instant and warns before switching to a heavier (and pricier) model.",
+  "description": "Defaults new ChatGPT chats to GPT-5.3 Instant and warns before switching to a heavier, pricier model.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

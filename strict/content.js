@@ -2,11 +2,12 @@
  * Tokens Control — STRICT edition
  * -------------------------------------------------------------------------
  * Hard lock, not a nudge:
- *   1. Continuously REMOVES the GPT-5.4 and GPT-5.5 options from ChatGPT's
- *      model menu, so they can never be selected. Because the heavy
- *      intelligence levels (Medium / High / Extra High / Pro) only exist
- *      under GPT-5.5/5.4, deleting those two versions makes every heavy
- *      option disappear — leaving GPT-5.3 Instant as the only path.
+ *   1. Continuously KEEPS ONLY the allowed model version(s) in ChatGPT's model
+ *      menu (a whitelist), removing every other version — GPT-5.4, GPT-5.5,
+ *      o3, and anything OpenAI adds later. Because the heavy intelligence
+ *      levels (Medium / High / Extra High / Pro) only exist under the flagship
+ *      models, removing those versions makes every heavy option disappear —
+ *      leaving GPT-5.3 Instant as the only path.
  *   2. Auto-selects GPT-5.3 Instant on every new chat.
  *
  * Everything is text-based and tolerant of ChatGPT's shifting DOM. Tune the
@@ -18,8 +19,10 @@
   const CONFIG = {
     DEFAULT_INTELLIGENCE: "Instant",
     DEFAULT_MODEL_VERSION: "GPT-5.3",
-    // Model versions to delete from the menu entirely.
-    BLOCKED_VERSIONS: ["GPT-5.5", "GPT-5.4"],
+    // Whitelist: the ONLY model version(s) allowed to stay in the menu. Every
+    // other model version is removed, so new/heavier models are blocked by
+    // default without having to maintain a blacklist.
+    ALLOWED_VERSIONS: ["GPT-5.3"],
     DEBUG: false,
   };
 
@@ -39,8 +42,18 @@
   let gating = false;
 
   /* ---------------------------------------------------------------------- */
-  /* Remove the blocked model versions from the menu                         */
+  /* Keep only the whitelisted model version(s); remove all others           */
   /* ---------------------------------------------------------------------- */
+
+  // Does this menu item look like a model *version* (e.g. "GPT-5.3", "o3")
+  // rather than an intelligence level ("Instant", "High", "Pro", …)?
+  function isModelVersion(text) {
+    return /^gpt/i.test(text) || /^o\d/i.test(text);
+  }
+
+  function isAllowedVersion(text) {
+    return CONFIG.ALLOWED_VERSIONS.some((v) => text === v || text.startsWith(v));
+  }
 
   function pruneBlocked() {
     if (isGptPage()) return 0; // never alter a custom GPT's menu
@@ -48,16 +61,18 @@
     // removing nodes from the open Radix menu mid-selection can break it.
     if (gating) return 0;
     let removed = 0;
-    document
-      .querySelectorAll('[role="menuitemradio"]')
-      .forEach((it) => {
-        const t = norm(it.textContent);
-        if (CONFIG.BLOCKED_VERSIONS.some((v) => t === v || t.startsWith(v))) {
-          it.remove();
-          removed++;
-        }
-      });
-    if (removed) log("Removed", removed, "blocked version option(s).");
+    document.querySelectorAll('[role="menuitemradio"]').forEach((it) => {
+      const t = norm(it.textContent);
+      if (!t) return;
+      // Only touch model versions; leave intelligence levels alone.
+      if (!isModelVersion(t)) return;
+      // Whitelist: remove any version that isn't explicitly allowed.
+      if (!isAllowedVersion(t)) {
+        it.remove();
+        removed++;
+      }
+    });
+    if (removed) log("Removed", removed, "non-whitelisted version option(s).");
     return removed;
   }
 

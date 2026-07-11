@@ -21,8 +21,9 @@
     DEFAULT_MODEL_VERSION: "GPT-5.3",
     // Heavy intelligence levels that should trigger a warning.
     HEAVY_MODELS: ["Thinking", "Extra High", "High", "Pro", "Medium"],
-    // Heavy base models (in the version submenu) that should also warn.
-    HEAVY_VERSIONS: ["GPT-5.5", "GPT-5.4"],
+    // Model versions allowed WITHOUT a warning (a whitelist). Any other model
+    // version — GPT-5.4, GPT-5.5, o3, or a brand-new model added later — warns.
+    ALLOWED_VERSIONS: ["GPT-5.3"],
     DEBUG: false,
   };
 
@@ -224,18 +225,31 @@
 
   const norm = (s) => (s || "").replace(/\s+/g, " ").trim();
 
-  // Does this menu-item text correspond to a heavy model? Returns the matched
-  // label (e.g. "High", "GPT-5.4") or null. Matches both intelligence levels
-  // and heavy base-model versions.
+  // Is this menu item a model *version* (e.g. "GPT-5.3", "GPT-6", "o3") rather
+  // than an intelligence level ("Instant", "High", "Pro", …)?
+  function isModelVersion(t) {
+    return /^gpt/i.test(t) || /^o\d/i.test(t);
+  }
+  function isAllowedVersion(t) {
+    return CONFIG.ALLOWED_VERSIONS.some(
+      (v) => t === v.toLowerCase() || t.startsWith(v.toLowerCase())
+    );
+  }
+
+  // Should selecting this option warn? Returns the label to warn about, or null.
+  // Model VERSIONS use a whitelist: anything that isn't an allowed version
+  // warns — including brand-new models added in the future. Intelligence levels
+  // warn when they're heavier than the default "Instant".
   function heavyModelMatch(text) {
     const t = norm(text).toLowerCase();
     if (!t) return null;
-    // Never warn on the default we enforce (Instant level / GPT-5.3 version).
-    if (t.includes(CONFIG.DEFAULT_MODEL.toLowerCase())) return null;
-    if (t.includes(CONFIG.DEFAULT_MODEL_VERSION.toLowerCase())) return null;
-    for (const v of CONFIG.HEAVY_VERSIONS) {
-      if (t.includes(v.toLowerCase())) return v;
+
+    if (isModelVersion(t)) {
+      return isAllowedVersion(t) ? null : norm(text);
     }
+
+    // Intelligence level: the default (Instant) never warns.
+    if (t.includes(CONFIG.DEFAULT_INTELLIGENCE.toLowerCase())) return null;
     for (const m of CONFIG.HEAVY_MODELS) {
       if (t.includes(m.toLowerCase())) return m;
     }
@@ -466,9 +480,7 @@
     dialogOpen = true;
 
     log("Intercepted heavy model:", model);
-    const isVersion = CONFIG.HEAVY_VERSIONS.some(
-      (v) => v.toLowerCase() === model.toLowerCase()
-    );
+    const isVersion = isModelVersion(model.toLowerCase());
     const proceed = await showWarning(model);
     dialogOpen = false;
 
