@@ -30,6 +30,39 @@
   const norm = (s) => (s || "").replace(/\s+/g, " ").trim();
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  /* ---------------------------------------------------------------------- */
+  /* Language-agnostic matching                                               */
+  /* -------------------------------------------------------------------------
+   * ChatGPT LOCALIZES the intelligence levels:
+   *   Instant -> "Instantánea"   Medium -> "Media"
+   *   High    -> "Alta"          Extra High -> "Muy alta"
+   * Model VERSIONS (GPT-5.3, GPT-5.5, o3) are NOT localized.
+   * So we match levels against aliases (accent-insensitive) and normalize back
+   * to canonical English keys. Add a language by extending the alias lists.
+   * ---------------------------------------------------------------------- */
+
+  const deaccent = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const key = (s) => deaccent(norm(s).toLowerCase());
+
+  const INTELLIGENCE_ALIASES = {
+    Instant: ["instant", "instantanea"],
+    Medium: ["medium", "media"],
+    High: ["high", "alta"],
+    "Extra High": ["extra high", "muy alta"],
+    Pro: ["pro"],
+    Thinking: ["thinking", "razonamiento", "pensamiento"],
+  };
+  const ALL_ALIASES = Object.values(INTELLIGENCE_ALIASES).flat();
+
+  // Exact-match a menu item's text to a canonical intelligence level, or null.
+  function intelligenceKey(text) {
+    const t = key(text);
+    for (const canon of Object.keys(INTELLIGENCE_ALIASES)) {
+      if (INTELLIGENCE_ALIASES[canon].includes(t)) return canon;
+    }
+    return null;
+  }
+
   // Custom GPTs live under /g/g-<hash>... — leave them completely alone (no
   // prune, no gate, no auto-select). Projects use the /g/g-p- prefix and are
   // NOT GPTs, so they're handled like normal chats.
@@ -104,12 +137,23 @@
       'button[aria-haspopup="menu"],button[data-testid*="model"]'
     );
     for (const b of candidates) {
-      const t = norm(b.textContent).toLowerCase();
-      if (t.includes("gpt") || t.includes("instant") || t.includes("model")) return b;
+      const t = key(b.textContent);
+      if (!t) continue;
+      if (t.includes("gpt") || t.includes("model") || t.includes("modelo")) return b;
       if (/\d+\.\d+/.test(t)) return b;
+      // The button often shows only the level name, localized ("Media", "Alta"…)
+      if (ALL_ALIASES.some((a) => t.includes(a))) return b;
     }
     return null;
   }
+
+  // The menu item for a canonical intelligence level, in any language.
+  const findIntelligenceRadio = (canon) =>
+    menuItems().find(
+      (it) =>
+        it.getAttribute("role") === "menuitemradio" &&
+        intelligenceKey(it.textContent) === canon
+    );
 
   const currentModelText = () => {
     const b = findModelSwitcherButton();
@@ -189,9 +233,13 @@
   }
 
   function isAtDefault() {
-    const t = currentModelText().toLowerCase();
+    const t = key(currentModelText()); // e.g. "5.3 instantanea" or "media"
+    if (!t) return false;
     const ver = CONFIG.DEFAULT_MODEL_VERSION.toLowerCase().replace(/[^0-9.]/g, "");
-    return t.includes(CONFIG.DEFAULT_INTELLIGENCE.toLowerCase()) && t.includes(ver);
+    const onDefaultLevel = INTELLIGENCE_ALIASES[CONFIG.DEFAULT_INTELLIGENCE].some(
+      (a) => t.includes(a)
+    );
+    return onDefaultLevel && t.includes(ver);
   }
 
   let enforcing = false;
@@ -205,9 +253,9 @@
 
     enforcing = true;
     try {
-      // Intelligence → Instant
+      // Intelligence → Instant (matched in any language)
       if (await openMenu()) {
-        const intel = findRadio(CONFIG.DEFAULT_INTELLIGENCE);
+        const intel = findIntelligenceRadio(CONFIG.DEFAULT_INTELLIGENCE);
         if (intel && intel.getAttribute("aria-checked") !== "true") {
           pointerClick(intel);
           await sleep(380);

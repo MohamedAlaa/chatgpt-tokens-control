@@ -19,16 +19,13 @@
     // The underlying model version, which lives in the submenu (GPT-5.5 ›).
     // Matched against the menu item's visible text.
     DEFAULT_MODEL_VERSION: "GPT-5.3",
-    // Heavy intelligence levels that should trigger a warning.
-    HEAVY_MODELS: ["Thinking", "Extra High", "High", "Pro", "Medium"],
     // Model versions allowed WITHOUT a warning (a whitelist). Any other model
     // version — GPT-5.4, GPT-5.5, o3, or a brand-new model added later — warns.
     ALLOWED_VERSIONS: ["GPT-5.3"],
     DEBUG: false,
   };
-
-  // Kept for the heavy-model warning logic (the "safe" level that never warns).
-  CONFIG.DEFAULT_MODEL = CONFIG.DEFAULT_INTELLIGENCE;
+  // Heavy intelligence levels are simply "any level that isn't the default" —
+  // see INTELLIGENCE_ALIASES below, which also handles localized names.
 
   /* ---------------------------------------------------------------------- */
   /* Localization — English / Spanish (anything else falls back to English)  */
@@ -225,6 +222,37 @@
 
   const norm = (s) => (s || "").replace(/\s+/g, " ").trim();
 
+  /* -------------------------------------------------------------------------
+   * Language-agnostic matching.
+   * ChatGPT LOCALIZES the intelligence levels:
+   *   Instant -> "Instantánea"   Medium -> "Media"
+   *   High    -> "Alta"          Extra High -> "Muy alta"
+   * Model VERSIONS (GPT-5.3, GPT-5.5, o3) are NOT localized.
+   * We match levels against aliases (accent-insensitive) and normalize back to
+   * canonical English keys so the message lookup keeps working.
+   * ---------------------------------------------------------------------- */
+  const deaccent = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const key = (s) => deaccent(norm(s).toLowerCase());
+
+  const INTELLIGENCE_ALIASES = {
+    Instant: ["instant", "instantanea"],
+    Medium: ["medium", "media"],
+    High: ["high", "alta"],
+    "Extra High": ["extra high", "muy alta"],
+    Pro: ["pro"],
+    Thinking: ["thinking", "razonamiento", "pensamiento"],
+  };
+  const ALL_ALIASES = Object.values(INTELLIGENCE_ALIASES).flat();
+
+  // Exact-match a menu item's text to a canonical intelligence level, or null.
+  function intelligenceKey(text) {
+    const t = key(text);
+    for (const canon of Object.keys(INTELLIGENCE_ALIASES)) {
+      if (INTELLIGENCE_ALIASES[canon].includes(t)) return canon;
+    }
+    return null;
+  }
+
   // Is this menu item a model *version* (e.g. "GPT-5.3", "GPT-6", "o3") rather
   // than an intelligence level ("Instant", "High", "Pro", …)?
   function isModelVersion(t) {
@@ -241,19 +269,21 @@
   // warns — including brand-new models added in the future. Intelligence levels
   // warn when they're heavier than the default "Instant".
   function heavyModelMatch(text) {
-    const t = norm(text).toLowerCase();
-    if (!t) return null;
+    const raw = norm(text);
+    if (!raw) return null;
+    const t = key(raw);
 
+    // Model versions (not localized) — whitelist.
     if (isModelVersion(t)) {
-      return isAllowedVersion(t) ? null : norm(text);
+      return isAllowedVersion(t) ? null : raw;
     }
 
-    // Intelligence level: the default (Instant) never warns.
-    if (t.includes(CONFIG.DEFAULT_INTELLIGENCE.toLowerCase())) return null;
-    for (const m of CONFIG.HEAVY_MODELS) {
-      if (t.includes(m.toLowerCase())) return m;
-    }
-    return null;
+    // Intelligence levels — normalize the localized name to a canonical key,
+    // e.g. "Muy alta" -> "Extra High", so the tailored message still resolves.
+    const canon = intelligenceKey(raw);
+    if (!canon) return null; // not a recognized level → never warn
+    if (canon === CONFIG.DEFAULT_INTELLIGENCE) return null; // Instant is fine
+    return canon;
   }
 
   // Walk up from an event target to find the actual selectable menu option.
@@ -505,14 +535,18 @@
   // Programmatically select an intelligence level or a model version.
   async function applySelection(label, isVersion) {
     if (!(await openMenu())) return;
-    let opt = findRadio(label);
+    // Versions aren't localized; intelligence levels are — so look those up by
+    // canonical key ("Extra High" finds "Muy alta").
+    const find = () =>
+      isVersion ? findRadio(label) : findIntelligenceRadio(label);
+    let opt = find();
     if (isVersion && !opt) {
       const trigger = findSubmenuTrigger();
       if (trigger) {
         for (let i = 0; i < 4 && !opt; i++) {
           openSubmenu(trigger);
           await sleep(320);
-          opt = findRadio(label);
+          opt = find();
         }
       }
     }
@@ -543,15 +577,26 @@
       'button[aria-haspopup="menu"],button[data-testid*="model"],button[id*="model"]'
     );
     for (const b of candidates) {
-      const t = norm(b.textContent).toLowerCase();
-      if (t.includes("gpt") || t.includes("instant") || t.includes("model")) {
+      const t = key(b.textContent);
+      if (!t) continue;
+      if (t.includes("gpt") || t.includes("model") || t.includes("modelo")) {
         return b;
       }
       // After we set it, the button reads like "5.3 Instant" / "5.5 Pro".
       if (/\d+\.\d+/.test(t)) return b;
+      // In some locales the button shows only the level name ("Media", "Alta"…)
+      if (ALL_ALIASES.some((a) => t.includes(a))) return b;
     }
     return null;
   }
+
+  // The menu item for a canonical intelligence level, in any language.
+  const findIntelligenceRadio = (canon) =>
+    menuItems().find(
+      (it) =>
+        it.getAttribute("role") === "menuitemradio" &&
+        intelligenceKey(it.textContent) === canon
+    );
 
   function currentModelText() {
     const b = findModelSwitcherButton();
@@ -668,12 +713,13 @@
   }
 
   function isAtDefault() {
-    const t = currentModelText().toLowerCase();
+    const t = key(currentModelText()); // e.g. "5.3 instantanea" or "media"
+    if (!t) return false;
     const ver = CONFIG.DEFAULT_MODEL_VERSION.toLowerCase().replace(/[^0-9.]/g, "");
-    return (
-      t.includes(CONFIG.DEFAULT_INTELLIGENCE.toLowerCase()) &&
-      (!ver || t.includes(ver))
+    const onDefaultLevel = INTELLIGENCE_ALIASES[CONFIG.DEFAULT_INTELLIGENCE].some(
+      (a) => t.includes(a)
     );
+    return onDefaultLevel && (!ver || t.includes(ver));
   }
 
   let enforcing = false;
@@ -688,9 +734,9 @@
 
     enforcing = true;
     try {
-      // ---- Pass A: intelligence level (Instant) ----
+      // ---- Pass A: intelligence level (Instant, in any language) ----
       if (await openMenu()) {
-        const intel = findRadio(CONFIG.DEFAULT_INTELLIGENCE);
+        const intel = findIntelligenceRadio(CONFIG.DEFAULT_INTELLIGENCE);
         if (intel && intel.getAttribute("aria-checked") !== "true") {
           pointerClick(intel); // this closes the menu
           await sleep(350);
